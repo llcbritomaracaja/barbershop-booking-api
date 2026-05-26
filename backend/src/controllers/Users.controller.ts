@@ -12,11 +12,12 @@ export class UserController{
     getUser = async(request: Request, response: Response) => {
         try{
             const {id_user} = request.params
-            if (!id_user) {
+            const id = Number(id_user)
+            if (!id) {
                 return response.status(401).json({message: "Usuário não autenticado."})
             }
 
-            const user = await this.userService.getUser(parseInt(id_user))
+            const user = await this.userService.getUser(id)
 
             if (!user){
                 return response.status(404).json({message: "Usuário não encontrado."})
@@ -63,7 +64,7 @@ export class UserController{
             }
 
             await this.userService.createUser(user.name, user.email, user.password, user.number)
-            return response.status(200).json({message: "Usuário criado com sucesso!"})
+            return response.status(201).json({message: "Usuário criado com sucesso!"})
 
         } catch (error) {
             if (error instanceof EmailAlreadyExistsError){
@@ -103,13 +104,15 @@ export class UserController{
         try{
             const {id_user} = request.params 
 
-            if (!id_user) return response.status(400).json({message: "ID do usuário não informado."})
+            const id = Number(id_user)
 
-            const deleted = await this.userService.deleteUser(id_user)
+            if (!id) return response.status(400).json({message: "ID do usuário não informado."})
+
+            const deleted = await this.userService.deleteUser(id)
 
             if(!deleted) return response.status(404).json({message: "Nenhum usuário foi encontrado para ser deletado."})
 
-            return response.status(200).json({message: "Usuário deletado com sucesso!"})
+            return response.status(204).send();
         } catch{
             return response.status(500).json({message: "Erro ao deletar usuário"})
         }

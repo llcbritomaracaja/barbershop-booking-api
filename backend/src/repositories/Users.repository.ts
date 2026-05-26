@@ -22,7 +22,13 @@ export class UserRepository{
     }
 
     updateUser = async(id_user: number, name:string, email: string, number:string, password?: string): Promise<User | null> => {
-        await this.manager.update({id_user}, {name, email, number, password})
+
+        const dataToUpdate: Partial<User> = {
+            name, email, number
+        }
+        if(password !== undefined) dataToUpdate.password = password;
+
+        await this.manager.update({id_user}, dataToUpdate)
         return this.manager.findOneBy({id_user})
     }
 

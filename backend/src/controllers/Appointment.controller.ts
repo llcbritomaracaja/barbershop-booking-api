@@ -124,6 +124,42 @@ export class AppointmentController{
     }
 
     // updateAppointment 
+    updateAppointment = async(request: Request, response: Response) => {
+        try {
+            const {id_appointment} = request.params;
+            const id = Number(id_appointment);
 
-    // deleteAppointment
+            if (!id) return response.status(400).json({message: "ID de agendamento não informado."})
+
+            const appointment = request.body;
+
+            if (!appointment || Object.keys(appointment).length === 0) return response.status(400).json({message: "Nenhuma alteração feita."})
+
+            const updatedAppointment = await this.appointmentService.updateAppointment(id, appointment);
+
+            if (!updatedAppointment) return response.status(400).json({message: "Agendamento inexistente para ser atualizado."})
+
+            return response.status(200).json(updatedAppointment)
+
+        } catch  {
+            return response.status(500).json({ message: "Erro ao atualizar agendamento." })
+        }
+    }
+
+    deleteAppointment = async(request: Request, response: Response) => {
+        try {
+            const {id_appointment} = request.params;
+            const id = Number(id_appointment);
+
+            if (!id) return response.status(400).json({message: "ID de agendamento não informado."})
+
+            const success = await this.appointmentService.deleteAppointment(id);
+
+            if (!success) return response.status(404).json({message: "Nenhum agendamento foi encontrado para ser deletado."})
+
+            return response.status(204).send();
+        } catch  {
+            return response.status(500).json({message: "Erro ao deletar agendamento."})
+        }
+    }
 }
