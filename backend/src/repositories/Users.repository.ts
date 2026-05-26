@@ -21,8 +21,8 @@ export class UserRepository{
         return await this.manager.save(user);
     }
 
-    updateUser = async(id_user: number, name:string, email: string, phone:string, password?: string): Promise<User | null> => {
-        await this.manager.update({id_user}, {name, email, password, phone})
+    updateUser = async(id_user: number, name:string, email: string, number:string, password?: string): Promise<User | null> => {
+        await this.manager.update({id_user}, {name, email, number, password})
         return this.manager.findOneBy({id_user})
     }
 

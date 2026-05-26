@@ -22,11 +22,11 @@ export class UserController{
                 return response.status(404).json({message: "Usuário não encontrado."})
             }
 
-            return responde.status(200).json({
+            return response.status(200).json({
                 user :user?.id_user,
                 name: user?.name,
                 email: user?.email,
-                phone: user?.phone
+                number: user?.number
             })
         } catch {
             return response.status(500).json({message: "Erro ao procurar usuário."})
@@ -45,7 +45,7 @@ export class UserController{
                 id_user: user.id_user,
                 name: user.name,
                 email: user.email,
-                phone: user.phone
+                number: user.number
             }))
 
             return response.status(200).json({users: usersMap})
@@ -62,7 +62,7 @@ export class UserController{
                 return response.status(400).json({message: "Preencha todos os parâmetros necessários."})
             }
 
-            await this.userService.createUser(user.name, user.email, user.password, user.phone)
+            await this.userService.createUser(user.name, user.email, user.password, user.number)
             return response.status(200).json({message: "Usuário criado com sucesso!"})
 
         } catch (error) {
@@ -83,7 +83,7 @@ export class UserController{
                 return response.status(400).json({message: "Nenhuma alteração feita."})
             }
 
-            const updateUser = await this.userService.updateUser(id, user.name, user.email, user.phone, user.password)
+            const updateUser = await this.userService.updateUser(id, user.name, user.email, user.number, user.password)
 
             if (!updateUser) {
                 return response.status(404).json({message: "Usuário inexistente."})
@@ -92,9 +92,9 @@ export class UserController{
             return response.status(200).json({message: "Usuário atualizado com sucesso!", 
                 name:updateUser?.name,
                 email:updateUser?.email,
-                phone:updateUser?.phone
+                number:updateUser?.number
             })
-        } catch () {
+        } catch {
             return response.status(500).json({message: "Não foi possível atualizar o usuário"})
         }
     }

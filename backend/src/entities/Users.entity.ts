@@ -1,5 +1,5 @@
 import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
-
+import {Appointment} from "./Appointments.entity"
 @Entity("users")
 export class User {
 
@@ -16,17 +16,22 @@ export class User {
     password!: string;
 
     @Column({nullable: true})
-    phone!: string;
+    number!: string;
 
     @Column({type: "enum", enum: ["CLIENT","BARBER", "ADMIN"], default: "CLIENT"})
     role!: string;
 
+    @OneToMany(()=> Appointment, appointment => appointment.user)
+    appointmentsAsClient!:Appointment[]
 
-    constructor(name?: string, email?: string, password?: string, phone?: string){
+    @OneToMany(() => Appointment, appointment => appointment.barber)
+    appointmentsAsBarber!: Appointment[]
+
+
+    constructor(name?: string, email?: string, password?: string, number?: string){
         if(name) this.name = name;
         if(email) this.email = email;
         if(password) this.password = password;
-        if(phone !== undefined) this.phone = phone;
+        if(number !== undefined) this.number = number;
     }
-
 }

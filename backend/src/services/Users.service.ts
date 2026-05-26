@@ -20,7 +20,7 @@ export class UserService {
         return await this.userRepository.getAllUser();
     }
 
-    createUser = async(name:string, email:string, password: string, phone:string,): Promise <User | null> => {
+    createUser = async(name:string, email:string, password: string, number:string,): Promise <User | null> => {
 
         const existingUser = await this.userRepository.findByEmail(email);
 
@@ -29,12 +29,12 @@ export class UserService {
         const salt = await bcrypt.genSalt(12);
         const passwordHash = await bcrypt.hash(password, salt);
 
-        const user = new User (name, email, passwordHash, phone)
+        const user = new User (name, email, passwordHash, number)
 
         return await this.userRepository.createUser(user as User);
     }
 
-    updateUser = async(id_user: number, name:string, email: string, phone:string, password: string): Promise<User | null> =>{
+    updateUser = async(id_user: number, name:string, email: string, number:string, password: string): Promise<User | null> =>{
         let passwordHash: string | undefined;
 
         if (password){
@@ -42,7 +42,7 @@ export class UserService {
             passwordHash = await bcrypt.hash(password, salt)
         }
 
-        return await this.userRepository.updateUser(id_user, name, email, phone, passwordHash)
+        return await this.userRepository.updateUser(id_user, name, email, number, passwordHash)
     }
 
     deleteUser = async(id_user: number): Promise<boolean> => {
