@@ -1,9 +1,11 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, Index} from "typeorm";
 import { User } from "./Users.entity";
 import {Service} from "./Services.entity"
 
 
 @Entity("appointments")
+@Index (["barber", "appointment_date", "appointment_hour"], {unique: true})
+
 export class Appointment {
     @PrimaryGeneratedColumn()
     id_appointment!: number;
@@ -14,14 +16,24 @@ export class Appointment {
     @Column ({nullable: false, type: "time" })
     appointment_hour!: string;
 
+    @Column ({type: "enum", enum: ["PENDING", "PAID", "FAILED", "REFUNDED"], default: "PENDING" }) // nao sei se vai dar certo 
+    payment_status!: string;
+
+    @Column ({nullable: true})
+    guest_name!: string
+
+    @Column({nullable: true})
+    guest_email!: string
+
+    @Column({nullable: true})
+    guest_number!: string
+
     @ManyToOne(
         () => User,
         user => user.appointmentsAsClient,
-        { nullable: false }
+        { nullable: true }
     )
-    @JoinColumn({
-        name: "id_user"
-    })
+    @JoinColumn({name: "id_user"})
     user!: User;
 
     @ManyToOne(
@@ -29,9 +41,7 @@ export class Appointment {
         user => user.appointmentsAsBarber,
         {nullable: false} 
     )
-    @JoinColumn({
-        name: "id_barber"
-    })
+    @JoinColumn({name: "id_barber"})
     barber!: User;
 
     @ManyToOne(
@@ -39,9 +49,7 @@ export class Appointment {
         service => service.appointments,
         { nullable: false }
     )
-    @JoinColumn({
-        name: "service_id"
-    })
+    @JoinColumn({name: "id_service"})
     service!: Service;
 
 

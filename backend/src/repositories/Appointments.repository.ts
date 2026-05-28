@@ -64,10 +64,11 @@ export class AppointmentRepository{
             return await this.manager.save(appointment);
         };
 
-        // updateAppointment = async(id_appointment: number, appointment_date: string, appointment_hour: string): Promise<Appointment | null> => {
-        //     await this.manager.update({id_appointment}, {appointment_date, appointment_hour})
-        //     return await this.getAppointment(id_appointment);
-        // }
+        createAppointmentAsGuest = async(data: Partial<Appointment>): Promise<Appointment> => {
+            const appointment = new Appointment()
+            Object.assign(appointment, data);
+            return await this.manager.save(appointment)
+        }
 
         updateAppointment = async(id_appointment: number, appointment: Partial<Appointment>): Promise <Appointment | null> => {  
             await this.manager.update(id_appointment, appointment)

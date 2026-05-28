@@ -9,6 +9,8 @@ import { AppDataSource } from './app-data-source'
 
 const app = express();
 
+app.use(express.json())
+
 app.use(cors())
 app.use(userRouter)
 app.use(appointmentRouter)

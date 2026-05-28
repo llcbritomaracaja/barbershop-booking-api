@@ -46,4 +46,9 @@ export class UserRepository{
     findByEmail = async(email:string): Promise<User | null>  => {
         return this.manager.findOne({where: {email}})
     }
+
+    updateUserRole = async(id_user:number, role:string): Promise <User | null> => {
+        await this.manager.update({id_user}, {role});
+        return await this.manager.findOne({where: {id_user:id_user}});
+    }
 }

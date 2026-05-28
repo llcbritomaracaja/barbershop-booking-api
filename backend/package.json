@@ -5,10 +5,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
-    "migration:create": "npm run typeorm migration:create",
-    "migration:run": "npm run typeorm -- migration:run -d src/data-source.ts",
-    "migration:revert": "npm run typeorm -- migration:revert -d src/data-source.ts"
+    "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/app-data-source.ts",
+    "migration:generate": "npm run typeorm -- migration:generate src/migrations/InitialSchema",
+    "migration:run": "npm run typeorm -- migration:run",
+    "migration:show": "npm run typeorm -- migration:show",
+    "migration:revert": "npm run typeorm -- migration:revert"
   },
   "keywords": [],
   "author": "",
@@ -32,6 +33,7 @@
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "tsconfig-paths": "^4.2.0",
+    "typeorm-ts-node-commonjs": "^0.3.20",
     "typescript": "^5.4.5"
   }
 }

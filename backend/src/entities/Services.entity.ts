@@ -1,5 +1,4 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
-import { User } from "./Users.entity";
 import {Appointment} from "./Appointments.entity"
 
 @Entity("services")
@@ -13,8 +12,8 @@ export class Service{
     @Column({nullable: false, type: "decimal", precision: 10, scale: 2})
     price!: number;
 
-    @Column()
-    description!: string;
+    @Column({nullable: true})
+    description?: string;
 
     @OneToMany(
         () => Appointment,

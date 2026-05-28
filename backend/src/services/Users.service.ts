@@ -2,6 +2,7 @@ import {UserRepository} from '../repositories/Users.repository'
 import {User} from '../entities/Users.entity'
 import jwt from "jsonwebtoken";
 import {EmailAlreadyExistsError} from '../errors/EmailAlreadyExistsError'
+import {ForbiddenToChangeRoleError} from '../errors/ForbiddenToChangeRoleError'
 
 const bcrypt = require('bcrypt');
 
@@ -67,11 +68,14 @@ export class UserService {
             throw new Error ("Usuario ou senha invalidos")
     }
     const token = jwt.sign(
-        {id_user:user.id_user, email:user.email, role:"user"},
+        {id_user:user.id_user, email:user.email, role:user.role},
         process.env.JWT_SECRET as string,
         {expiresIn:"1h"}
     )
     return token
     }
 
+    updateUserRole = async(id_toUpdate:number, role:string): Promise<User|null> => {
+        return await this.userRepository.updateUserRole(id_toUpdate, role);
+    }
 }

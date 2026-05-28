@@ -1,5 +1,8 @@
 import {AppointmentService} from "../services/Appointment.service"
 import {Response, Request} from 'express'
+import { NotBarberError } from "../errors/NotBarberError"
+import { Appointment } from "../entities/Appointments.entity"
+
 
 export class AppointmentController{
     appointmentService: AppointmentService
@@ -11,21 +14,31 @@ export class AppointmentController{
     getAppointment = async(request: Request, response: Response) => { 
         try{
             const {id_appointment} = request.params
-
             const id = Number(id_appointment);
 
             const appointment = await this.appointmentService.getAppointment(id);
 
             if (!appointment) return response.status(404).json({message: "Agendamento não encontrado."})
             
-            return response.status(200).json({
-                id_appointment: appointment.id_appointment,
-                date: appointment.appointment_date,
-                hour: appointment.appointment_hour,
-                barber: appointment.barber,
-                user: appointment.user,
-                service: appointment.service
-            })
+            const id_authUser = request.user?.id_user
+            const role_authUser = request.user?.role
+
+            if (appointment.user?.id_user === id_authUser || role_authUser === "ADMIN" || role_authUser === "BARBER") {
+                
+                return response.status(200).json({
+                    id_appointment: appointment.id_appointment,
+                    date: appointment.appointment_date,
+                    hour: appointment.appointment_hour,
+                    id_barber: appointment.barber?.id_user,
+                    barber: appointment.barber?.name,
+                    id_user: appointment.user?.id_user,
+                    user_name: appointment.user?.name,
+                    user_email: appointment.user?.email,
+                    user_number: appointment.user?.number,
+                    id_service: appointment.service?.id_service,
+                    service: appointment.service?.name
+                })
+            } else return response.status(403).json({message: "Não autorizado."})
 
         } catch {
             return response.status(500).json({ message: "Erro ao buscar agendamento "})
@@ -37,52 +50,78 @@ export class AppointmentController{
         try {
 
             const {id_user} = request.params
+            const id = Number(id_user)
 
             if(!id_user) return response.status(400).json({message: "ID do usuário não informado."})
 
-            const id = Number(id_user)
-            
-            const appointments = await this.appointmentService.getAppointmentByUser(id);
+            const id_authUser = request.user?.id_user;
+            const role = request.user?.role
 
-            if(!appointments || appointments.length === 0) return response.status(200).json([]);
+            if (id_authUser === id || role === "ADMIN" || role === "BARBER"){
+                const appointments = await this.appointmentService.getAppointmentByUser(id);
 
-            const appointmentsMap = appointments.map(a => ({
-                id_appointment: a.id_appointment,
-                barber: a.barber,
-                user: a.user,
-                date: a.appointment_date,
-                hour: a.appointment_hour,
-                service: a.service
-            }))
+                if(!appointments || appointments.length === 0) return response.status(200).json([]);
 
-            return response.status(200).json(appointmentsMap) 
-        } catch {
+                const appointmentsMap = appointments.map(a => ({
+                    id_appointment: a.id_appointment,
+                    id_barber: a.barber?.id_user,
+                    barber_name: a.barber?.name,
+                    barber_email: a.barber?.email,
+                    id_user: a.user?.id_user,
+                    user_name: a.user?.name,
+                    user_email: a.user?.email,
+                    date: a.appointment_date,
+                    hour: a.appointment_hour,
+                    id_service: a.service?.id_service,
+                    service_name: a.service?.name,
+                    service_description: a.service?.description,
+                    service_price: a.service?.price
+                }))
+
+                return response.status(200).json(appointmentsMap) 
+            } else return response.status(403).json({message: "Não autorizado."})
+
+        } catch (e) {
             return response.status(500).json({message: "Erro ao buscar agendamentos de usuário."})
+            console.log(e)
         }
     }
 
     getAppointmentsByBarber = async(request: Request, response: Response)=> {
         try {
             const {id_barber} = request.params;
-            if(!id_barber) return response.status(400).json({message:"ID de barbeiro não informado."})
-            
             const id = Number(id_barber);
-            
-            const appointments = await this.appointmentService.getAppointmentByBarber(id);
 
-            if (!appointments || appointments.length === 0) return response.status(200).json([])
+            if(!id_barber) return response.status(400).json({message:"ID de barbeiro não informado."})
 
-            const appointmentsMap = appointments.map(a => ({
-                id_appointment: a.id_appointment,
-                barber: a.barber,
-                user: a.user,
-                date: a.appointment_date,
-                hour: a.appointment_hour,
-                service: a.service
-            }))
+            const id_authBarber = request.user?.id_user
+            const role = request.user?.role
 
-            return response.status(200).json(appointmentsMap)
-            
+            if (id_authBarber === id || role === "ADMIN" || role === "BARBER"){
+                
+                const appointments = await this.appointmentService.getAppointmentByBarber(id);
+
+                if (!appointments || appointments.length === 0) return response.status(200).json([])
+
+                const appointmentsMap = appointments.map(a => ({
+                        id_appointment: a.id_appointment,
+                        id_barber: a.barber?.id_user,
+                        barber_name: a.barber?.name,
+                        barber_email: a.barber?.email,
+                        id_user: a.user?.id_user,
+                        user_name: a.user?.name,
+                        user_email: a.user?.email,
+                        date: a.appointment_date,
+                        hour: a.appointment_hour,
+                        id_service: a.service?.id_service,
+                        service_name: a.service?.name,
+                        service_description: a.service?.description,
+                        service_price: a.service?.price
+                }))
+
+                return response.status(200).json(appointmentsMap)
+            } else return response.status(403).json({ message: "Não autorizado."})
+
         } catch {
             return response.status(500).json({message: "Erro ao buscar agendamentos de barbeiro."})
         }
@@ -90,6 +129,11 @@ export class AppointmentController{
 
     getAllAppointments = async(request: Request, response: Response) => {
         try {
+
+            const role = request.user?.role
+
+            if (role !== "ADMIN") return response.status(403).json({message: "Não autorizado."})
+                
             const appointments = await this.appointmentService.getAllAppointments();
 
             if (!appointments || appointments.length === 0) return response.status(200).json([]);
@@ -111,19 +155,69 @@ export class AppointmentController{
 
     createAppointment = async(request: Request, response: Response) => {
         try {
-            const appointmentData = request.body;
 
-            if (!appointmentData.appointment_hour || !appointmentData.appointment_date) return response.status(400).json({message: "Preencha todas as informações de agendamento."})
+            const id_authUser = request.user?.id_user
+            const role = request.user?.role
 
-            const appointment = await this.appointmentService.createAppointment(appointmentData);
+            const {appointment_date, appointment_hour, id_user, id_barber, id_service} = request.body;
 
-            return response.status(201).json({message: "Agendamento criado com sucesso!"})
-        } catch  {
+            if (id_authUser === Number(id_user) || role === "ADMIN" || role === "BARBER") {
+
+                if (!appointment_hour || !appointment_date || !id_user || !id_barber || !id_service) return response.status(400).json({message: "Preencha todas as informações de agendamento."})
+
+                const appointment = {
+                    appointment_date,
+                    appointment_hour,
+                    id_user,
+                    id_barber,
+                    id_service
+                }
+
+                await this.appointmentService.createAppointment(appointment);
+
+
+                return response.status(201).json({message: "Agendamento criado com sucesso!"})
+            } else return response.status(403).json({ message: "Não autorizado."})
+
+            
+        } catch (error:any) {
+
+            console.log(error)
+
+            if(error instanceof(NotBarberError)) return response.status(400).json({message: "Não foi possível marcar um agendamento com o ID fornecido por não se tratar de um barbeiro."})
+
+            if (error.code === "23505") return response.status(409).json({message: "Esse horário já está ocupado."})
+
             return response.status(500).json({message: "Erro ao criar agendamento."})
         }
     }
 
-    // updateAppointment 
+    createAppointmentAsGuest = async(request:Request, response:Response) => {
+        try {
+            const {appointment_date, appointment_hour, guest_name, guest_email, guest_number, id_barber, id_service} = request.body
+
+            if (!appointment_date || !appointment_hour || !guest_name || !guest_email || !guest_number || !id_barber || !id_service) return response.status(400).json({ message: "Preencha todas as informações de agendamento."})
+
+            const appointment = {
+                appointment_date,
+                appointment_hour,
+                guest_name,
+                guest_email,
+                guest_number,
+                id_barber,
+                id_service
+            }
+
+            await this.appointmentService.createAppointmentAsGuest(appointment);
+            
+            return response.status(200).json({message: "Agendamento como visitante criado com sucesso!"})
+        } catch (error: any) {
+            
+            if (error instanceof(NotBarberError) ) return response.status(400).json({ message: "Não foi possível criar um agendamento com o ID fornecido por não se tratar de um barbeiro."})
+            return response.status(500).json({ message: "Erro ao criar agendamento como visitante."})
+        }
+    }
+
     updateAppointment = async(request: Request, response: Response) => {
         try {
             const {id_appointment} = request.params;
@@ -131,35 +225,63 @@ export class AppointmentController{
 
             if (!id) return response.status(400).json({message: "ID de agendamento não informado."})
 
-            const appointment = request.body;
+            const id_authUser = request.user?.id_user
+            const role = request.user?.role
 
-            if (!appointment || Object.keys(appointment).length === 0) return response.status(400).json({message: "Nenhuma alteração feita."})
+            const appointmentSearchId = await this.appointmentService.getAppointment(id)
+            
+            if (appointmentSearchId?.user?.id_user === id_authUser || role === "ADMIN" || role === "BARBER"){
+                const appointment = request.body;
 
-            const updatedAppointment = await this.appointmentService.updateAppointment(id, appointment);
+                if (!appointment || Object.keys(appointment).length === 0) return response.status(400).json({message: "Nenhuma alteração feita."})
 
-            if (!updatedAppointment) return response.status(400).json({message: "Agendamento inexistente para ser atualizado."})
+                const updatedAppointment = await this.appointmentService.updateAppointment(id, appointment);
 
-            return response.status(200).json(updatedAppointment)
+                if (!updatedAppointment) return response.status(400).json({message: "Agendamento inexistente para ser atualizado."})
 
-        } catch  {
+                return response.status(200).json({message: "Agendamento atualizado com sucesso!",
+                    appointment_date: updatedAppointment.appointment_date,
+                    appointment_hour: updatedAppointment.appointment_hour,
+                    user_name: updatedAppointment.user?.name,
+                    user_email: updatedAppointment.user?.email,
+                    user_number: updatedAppointment.user?.number,
+                    service_name: updatedAppointment.service?.name,
+                })
+            } else return response.status(403).json({ message: "Não autorizado."})
+        } catch (error:any) {
+            
+            if (error.code === "23505") return response.status(409).json({message: "Esse horário já está ocupado."})
+
             return response.status(500).json({ message: "Erro ao atualizar agendamento." })
         }
     }
 
     deleteAppointment = async(request: Request, response: Response) => {
         try {
+            const role = request.user?.role
+            const id_user = request.user?.id_user
+
             const {id_appointment} = request.params;
+
             const id = Number(id_appointment);
 
-            if (!id) return response.status(400).json({message: "ID de agendamento não informado."})
+            if(!id) return response.status(400).json({message: "ID de agendamento não informado."})
 
-            const success = await this.appointmentService.deleteAppointment(id);
+            const appointment = await this.appointmentService.getAppointment(id);
 
-            if (!success) return response.status(404).json({message: "Nenhum agendamento foi encontrado para ser deletado."})
 
-            return response.status(204).send();
+            if(!appointment) return response.status(404).json({message: "Nenhum agendamento foi encontrado para ser deletado."})
+
+            if (appointment?.user?.id_user === id_user || role === "ADMIN" || role === "BARBER" ) {
+
+                const success = await this.appointmentService.deleteAppointment(id);
+
+                return response.status(204).send();
+            } else return response.status(403).json({message: "Não autorizado."})
+
         } catch  {
             return response.status(500).json({message: "Erro ao deletar agendamento."})
         }
     }
+
 }

@@ -52,6 +52,9 @@ export class ServiceController {
     createService = async(request:Request, response:Response) => {
         try {
             const service = request.body;
+            const role = request.user?.role
+
+            if(role !== "ADMIN")return response.status(403).json({message: "Não autorizado."})
 
             if (!service.name || !service.price || !service.description) return response.status(400).json({message: "Preencha todos os parâmetros necessários."})
 
@@ -66,6 +69,9 @@ export class ServiceController {
         try {
             const {id_service} = request.params;
             const id = Number(id_service);
+            const role = request.user?.role
+
+            if(role !== "ADMIN") return response.status(403).json({message: "Não autorizado."})
 
             if(!id) return response.status(400).json({message: "ID de serviço para ser atualizado não foi informado."})
             
@@ -89,6 +95,9 @@ export class ServiceController {
         try {
             const {id_service} = request.params;
             const id = Number(id_service);
+            const role = request.user?.role
+
+            if(role !== "ADMIN") return response.status(403).json({message: "Não autorizado."})
 
             if(!id) return response.status(400).json({message:"ID de serviço para ser deletado não foi informado."})
 
