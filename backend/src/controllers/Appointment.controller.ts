@@ -2,13 +2,20 @@ import {AppointmentService} from "../services/Appointment.service"
 import {Response, Request} from 'express'
 import { NotBarberError } from "../errors/NotBarberError"
 import { Appointment } from "../entities/Appointments.entity"
-
+import { User } from "../entities/Users.entity"
+import { UserService } from "../services/Users.service"
+import { Service } from "../entities/Services.entity"
+import { ServiceServices } from "../services/Services.service"
 
 export class AppointmentController{
     appointmentService: AppointmentService
+    userService: UserService
+    serviceServices: ServiceServices
 
-    constructor(appointmentService = new AppointmentService()){
-        this.appointmentService = appointmentService
+    constructor(appointmentService = new AppointmentService(), userService = new UserService(), serviceServices = new ServiceServices()){
+        this.appointmentService = appointmentService,
+        this.userService = userService,
+        this.serviceServices = serviceServices
     }
 
     getAppointment = async(request: Request, response: Response) => { 
@@ -156,29 +163,32 @@ export class AppointmentController{
     createAppointment = async(request: Request, response: Response) => {
         try {
 
-            const id_authUser = request.user?.id_user
+            const id_user = Number(request.user?.id_user)
             const role = request.user?.role
 
-            const {appointment_date, appointment_hour, id_user, id_barber, id_service} = request.body;
+            const {appointment_date, appointment_hour, id_barber, id_service} = request.body;
 
-            if (id_authUser === Number(id_user) || role === "ADMIN" || role === "BARBER") {
+            if (!appointment_hour || !appointment_date || !id_barber || !id_service) return response.status(400).json({message: "Preencha todas as informações de agendamento."})
 
-                if (!appointment_hour || !appointment_date || !id_user || !id_barber || !id_service) return response.status(400).json({message: "Preencha todas as informações de agendamento."})
+            const appointment = {
+                appointment_date,
+                appointment_hour,
+                id_user,
+                id_barber,
+                id_service
+            }
 
-                const appointment = {
-                    appointment_date,
-                    appointment_hour,
-                    id_user,
-                    id_barber,
-                    id_service
-                }
+            await this.appointmentService.createAppointment(appointment);
 
-                await this.appointmentService.createAppointment(appointment);
+            const user = await this.userService.getUser(id_user)
+            const barber = await this.userService.getUser(id_barber)
+            const service = await this.serviceServices.getService(id_service)
+
+            await this.appointmentService.createAppointmentNotification( user?.email as string, "Seu agendamento foi confirmado!", user?.name as string, barber?.name as string, appointment_date as string, appointment_hour as string, service?.name as string)
+            await this.appointmentService.createAppointmentNotification(barber?.email as string, "Você recebeu um novo agendamento.", user?.name as string, barber?.name as string, appointment_date as string, appointment_hour as string, service?.name as string)
 
 
-                return response.status(201).json({message: "Agendamento criado com sucesso!"})
-            } else return response.status(403).json({ message: "Não autorizado."})
-
+            return response.status(201).json({message: "Agendamento criado com sucesso!"})
             
         } catch (error:any) {
 
@@ -208,12 +218,18 @@ export class AppointmentController{
                 id_service
             }
 
+            const barber = await this.userService.getUser(id_barber)
+            const service = await this.serviceServices.getService(id_service);
+
             await this.appointmentService.createAppointmentAsGuest(appointment);
+            await this.appointmentService.createAppointmentNotification( barber?.name as string,"Você recebeu um novo agendamento.", guest_name as string, barber?.name as string, appointment_date as string, appointment_hour as string, service?.name as string)
             
             return response.status(200).json({message: "Agendamento como visitante criado com sucesso!"})
         } catch (error: any) {
             
             if (error instanceof(NotBarberError) ) return response.status(400).json({ message: "Não foi possível criar um agendamento com o ID fornecido por não se tratar de um barbeiro."})
+
+            if (error.code === "23505") return response.status(409).json({message: "Esse horário já esta ocupado."})
             return response.status(500).json({ message: "Erro ao criar agendamento como visitante."})
         }
     }
@@ -228,9 +244,11 @@ export class AppointmentController{
             const id_authUser = request.user?.id_user
             const role = request.user?.role
 
-            const appointmentSearchId = await this.appointmentService.getAppointment(id)
+            const oldAppointment = await this.appointmentService.getAppointment(id)
+
+            if(!oldAppointment)return response.status(400).json({message: "Nenhum agendamento foi encontrado com esse ID."})
             
-            if (appointmentSearchId?.user?.id_user === id_authUser || role === "ADMIN" || role === "BARBER"){
+            if (oldAppointment?.user?.id_user === id_authUser || role === "ADMIN" || role === "BARBER"){
                 const appointment = request.body;
 
                 if (!appointment || Object.keys(appointment).length === 0) return response.status(400).json({message: "Nenhuma alteração feita."})
@@ -238,6 +256,11 @@ export class AppointmentController{
                 const updatedAppointment = await this.appointmentService.updateAppointment(id, appointment);
 
                 if (!updatedAppointment) return response.status(400).json({message: "Agendamento inexistente para ser atualizado."})
+
+                if (updatedAppointment.user) await this.appointmentService.updateAppointmentNotification(updatedAppointment.user?.email as string, oldAppointment as Appointment, updatedAppointment as Appointment)
+                if (updatedAppointment.guest_email) await this.appointmentService.updateAppointmentNotification(updatedAppointment.guest_email as string, oldAppointment as Appointment, updatedAppointment as Appointment)
+
+                await this.appointmentService.updateAppointmentNotification(updatedAppointment.barber?.email as string, oldAppointment as Appointment, updatedAppointment as Appointment)
 
                 return response.status(200).json({message: "Agendamento atualizado com sucesso!",
                     appointment_date: updatedAppointment.appointment_date,
@@ -247,6 +270,7 @@ export class AppointmentController{
                     user_number: updatedAppointment.user?.number,
                     service_name: updatedAppointment.service?.name,
                 })
+
             } else return response.status(403).json({ message: "Não autorizado."})
         } catch (error:any) {
             
@@ -269,12 +293,16 @@ export class AppointmentController{
 
             const appointment = await this.appointmentService.getAppointment(id);
 
-
             if(!appointment) return response.status(404).json({message: "Nenhum agendamento foi encontrado para ser deletado."})
 
             if (appointment?.user?.id_user === id_user || role === "ADMIN" || role === "BARBER" ) {
 
                 const success = await this.appointmentService.deleteAppointment(id);
+
+                if (appointment.user) await this.appointmentService.deleteAppointmentNotification(appointment.user?.email as string, appointment as Appointment)
+                if (appointment.guest_name) await this.appointmentService.deleteAppointmentNotification(appointment.guest_email as string, appointment as Appointment)
+
+                await this.appointmentService.deleteAppointmentNotification(appointment.barber?.email as string, appointment as Appointment)
 
                 return response.status(204).send();
             } else return response.status(403).json({message: "Não autorizado."})
